@@ -4,15 +4,24 @@ const invoices = require("./invoices.json");
 function statement(invoice, plays) {
   const statementData = {};
   statementData.customer = invoice.customer;
-  statementData.performances = invoice.performances;
+  statementData.performances = invoice.performances.map(enrichPerformance);
   return renderPlainText(statementData, plays);
+
+  function enrichPerformance(aPerformance) {
+    const result = Object.assign({}, aPerformance);
+    result.play = playFor(result);
+    return result;
+  }
+  function playFor(aPerformance) {
+    return plays[aPerformance.playId];
+  }
 }
 
 function renderPlainText(data, plays) {
   let result = `청구 내역 (고객명: ${data.customer})\n`;
 
   for (let perf of data.performances) {
-    result += `${playFor(perf).name}: ${usd(amountFor(perf))} (${
+    result += `${perf.play.name}: ${usd(amountFor(perf))} (${
       perf.audience
     }석)\n`;
   }
@@ -44,13 +53,10 @@ function renderPlainText(data, plays) {
     }).format(aNumber / 100);
   }
 
-  function playFor(aPerformance) {
-    return plays[aPerformance.playId];
-  }
   function volumeCreditsFor(perf) {
     let result = 0;
     result += Math.max(perf.audience - 30, 0);
-    if ("comedy" === playFor(perf).type) {
+    if ("comedy" === perf.play.type) {
       result += Math.floor(perf.audience / 5);
     }
     return result;
@@ -58,7 +64,7 @@ function renderPlainText(data, plays) {
   function amountFor(aPerformance) {
     let result = 0;
 
-    switch (playFor(aPerformance).type) {
+    switch (aPerformance.play.type) {
       case "tragedy": // 비극
         result = 40000;
         if (aPerformance.audience > 30) {
